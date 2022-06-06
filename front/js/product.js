@@ -1,81 +1,62 @@
-let produitImage = document.querySelector(".item__img");
-let produitName = document.querySelector("#title");
-let produitPrice = document.querySelector("#price");
-let produitDescription = document.querySelector("#description");
-let produitColors = document.querySelector("#colors");
-let quantite = document.querySelector("#quantity");
-let ajoutAuPanier = document.querySelector("#addToCart");
-let colorValue = document.querySelector("#colors");
 // la variable params recupere l'url de la page et la variable id récupère la valeur de params id 
-
 const params = new URLSearchParams (document.location.search);
 const id = params.get("_id");
 console.log(id);
 
-const idProduit = async () => {
-  // on reupère l'ID de produit des donnees de l'API
-	await fetch("http://localhost:3000/api/products/"+id)
-	.then((res) => res.json())
-	.then((objetProduit) => (produitDetail = objetProduit));
-	// console.log(produitDetail);
+fetch("http://localhost:3000/api/products/"+id)
+	.then( res => res.json())
+    .then( produit => {
 
-	// maintenant on passe au donnees de l'id du produit
-	creationImage = document.createElement('image');
-	produitImage.appendChild(creationImage);
-	creationImage.src = produitDetail.imageUrl;
-	produitName.innerText = produitDetail.name;
-	produitPrice.innerText = produitDetail.price;
-	produitDescription.innerText = produitDetail.description;
+    document.querySelector('.item__img').innerHTML = `<img src="${produit.imageUrl}" alt="${produit.altTxt}">`
+    document.querySelector('#title').textContent = produit.name
+    document.querySelector('#price').textContent = produit.price
+    document.querySelector('#description').textContent = produit.description
 
-	// on passe maintenant à la selection couleurs + value
-	for (let i = 0; i < produitDetail.colors.length; i++) {
-		selectionCouleur = document.createElement("option");
-		produitColors.appendChild(selectionCouleur);
-		selectionCouleur.innerText = produitDetail.colors[i];
-		selectionCouleur.setAttribute("value", produitDetail.colors[i]);
-	}
+    produit.colors.forEach(item => {
+        document.querySelector('#colors').innerHTML += `<option value="${item}">${item}</option>`
+    })
 
-	// au clic du bouton ajouter au panier les produits vont dans le localstorage
-	function ajouterDansLocalStorage() {
-		ajoutAuPanier.addEventListener("click", (e) => {
-			e.preventDefault();
+    //on recupere des donnees //
+    //ID selection //
 
-			let produitsClients = {
-				produitsClientsName: produitDetail.name,
-				produitsClientsDescription: produitDetail.description,
-				produitsClientsImage: produitDetail.imageUrl,
-				produitsClientsAlt: produitDetail.AltTxt,
-				produitsClientsPrice: produitDetail.price,
-				produitsClientsId:id,
-				produitsClientsQuantite: quantity.value,
-				produitsClientsCouleur: colorValue.value,
-			};
-			//  JSON en objet JS
-			let panierStocke= JSON.parse(localStorage.getItem("produit"));
-			// Si on trouve produits dans le localStorage
-				if (panierStocke) {
-					const produitsTrouves = panierStocke.find(
-						(element) => element.produitsClientsId == id && element.produitsClientsCouleur == colorValue.value
-					);
-					// Si les produits sont les memes , addition des quantitees
-					if (produitsTrouves) {
-						let choixQuantite = parseInt(produitsClients.produitsClientsQuantite) 
-              + parseInt(produitsTrouves.produitsClientsQuantite);
-						produitsTrouves.produitsClientsQuantite = choixQuantite;
-						localStorage.setItem("produits", JSON.stringify(panierStocke));
-						return;
-					} else {
-						panierStocke.push(produitsClients);
-						localStorage.setItem("produit", JSON.stringify(panierStocke));
-					}
-					// Si on ne trouve pas de produits
-				} else {
-					panierStocke = [];
-					panierStocke.push(produitsClients);
-					localStorage.setItem("produit", JSON.stringify(panierStocke));
+    const colorSelect = document.querySelector("#colors");
+    const quantityInput = document.querySelector("#quantity");
+
+    //Button de panier selection //
+    const ajoutAuPanier = document.querySelector("#addToCart");
+    // ajout de produit dans le panier  //
+	ajoutAuPanier.addEventListener("click", (e) => {
+		e.preventDefault();
+		// recuperation de valeur de id produit
+		let produitClient = {
+			id: id,
+			quantity: parseInt(quantityInput.value),
+			color: colorSelect.value
+		};
+
+		//  JSON en objet JS
+		let panierStocke= JSON.parse(localStorage.getItem("produit"));
+		// Si on trouve produits dans le localStorage
+			if (panierStocke) {
+				const produitsTrouves = panierStocke.find(
+					(element) => element.id == id && element.color == colorSelect.value
+				);
+		// Si les produits sont les memes , addition des quantitees
+			if (produitsTrouves) {
+				let choixQuantite = parseInt(produitClient.quantity) 
+              + parseInt(produitsTrouves.quantite);
+				produitsTrouves.quantite = choixQuantite;
+				localStorage.setItem("produit", JSON.stringify(panierStocke));
+				return;
+			} else {
+				panierStocke.push(produitClient);
+				localStorage.setItem("produit", JSON.stringify(panierStocke));
+			}
+		// Si on ne trouve pas de produits
+			} else {
+				panierStocke = [];
+				panierStocke.push(produitClient);
+				localStorage.setItem("produit", JSON.stringify(panierStocke));
 				}
 		});
-	}
-	ajouterDansLocalStorage();
-};
-idProduit();
+})

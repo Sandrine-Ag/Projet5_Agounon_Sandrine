@@ -1,56 +1,46 @@
 // definition des variables
-let items = document.querySelector("#cart__items");
-let produit = JSON.parse(localStorage.getItem("produit"));
-let produitArray = [];
+let produit = JSON.parse(localStorage.getItem("produit") || "[]");
+let panier = []
+let items = document.getElementById("cart__items")
+let totalQuantity = 0;
+let totalSum = 0;
 
-// fonction afficher panier pour recuperer les donnees dans le localstorage
-function afficherPanier() {
-  // definition de prix total et total quantite article
-  let prixTotal = 0;
-  let quantiteTotal = 0;
-
-  // boucle pour calculer le prix total et quantite produit
-  for (let pq = 0; pq < produit.length; pq++) {
-      prixTotal += (produit[pq].produitsClientsPrice * parseInt(produit[pq].produitsClientsQuantite));
-      quantiteTotal += parseInt(produit[pq].produitsClientsQuantite)};
-	    // Repartition des donnees
-	    //On itere sur un tableau vide de base qui se rempli avec le html pour chaque produit.
-	    for (let a = 0; a < produit.length; a++) {
-		    const produitHTML =
-			`
-        <article class="cart__item" data-id="${produit[a].produitsClientsId}" data-color="${produit[a].produitsClientsCouleur}">
-            <div class="cart__item__img">
-                <img src="${produit[a].produitsClientsImage}" alt="Photographie d'un canapé">
-            </div>
-            <div class="cart__item__content">
-                <div class="cart__item__content__titlePrice">
-                    <h2>${produit[a].produitsClientsName}</h2>
-					          <p>${produit[a].produitsClientsCouleur}</p>
-                    <p>${produit[a].produitsClientsPrice}</p>
-                </div>
-            <div class="cart__item__content__settings">
-                <div class="cart__item__content__settings__quantity">
-                    <p>Qté : </p>
-                    <input type="number" class="itemQuantity" name="itemQuantity" min="1" max="100" value="${
-											produit[a].produitsClientsQuantite
-										}">
-                </div>                                                                                                                                        
-                <div class="cart__item__content__settings__delete">
-                    <p class="deleteItem">Supprimer</p>
-                </div>
-            </div>
+produit.forEach(produit => {
+  console.log(produit);
+  fetch(`http://localhost:3000/api/products/${produit.id}`)
+    .then(res => res.json())
+    .then(data => {
+      console.log(data);
+      items.innerHTML += `
+    <article class="cart__item" data-id="${produit.id}" data-color="${produit.color}">
+    <div class="cart__item__img">
+      <img src="${data.imageUrl}" alt="${data.altTxt}">
+    </div>
+    <div class="cart__item__content">
+      <div class="cart__item__content__description">
+        <h2>${data.name}</h2>
+        <p>${produit.color}</p>
+        <p>${data.price} €</p>
+      </div>
+      <div class="cart__item__content__settings">
+        <div class="cart__item__content__settings__quantity">
+          <p>Qté : </p>
+          <input type="number" class="itemQuantity" name="itemQuantity" min="1" max="100" value="${produit.quantity}">
         </div>
-        </article> `;
-        items.innerHTML += produitHTML;
-      }
-    // on affiche le total quantite (article) et le total prix dans la partie correspondante dans le html
-    let totalQuantiteHtml = document.getElementById("totalQuantity");
-     totalQuantiteHtml.textContent = quantiteTotal;
+        <div class="cart__item__content__settings__delete">
+          <p class="deleteItem">Supprimer</p>
+        </div>
+      </div>
+    </div>
+  </article>
+  `
+     supprimerProduit()
+    changerQuantite()
 
-    let totalPriceHtml = document.getElementById("totalPrice");
-     totalPriceHtml.textContent = prixTotal;
-}
-afficherPanier();
+  })
+});
+getTotal()
+
 
 // supprimer au clic un produit
 
@@ -65,34 +55,21 @@ function supprimerProduit() {
       const parentArticle = event.target.closest(".cart__item");      
       const produitModifieId = parentArticle.getAttribute("data-id");
       const produitModifieCouleur = parentArticle.getAttribute("data-color");
-      // on definit à nouveau le prix et la quantite total 
-      let quantiteTotal = 0;
-      let prixTotal = 0;
       // ........on fait une boucle si le produit selectionne pour suppression a un id
       // correspond à celui ci, retire ce dernier dans le tableau  
       for (let index = 0; index < produit.length; index++) {
-        if(produit[index].produitsClientsId == produitModifieId && produit[index].produitsClientsCouleur == produitModifieCouleur){
+        if(produit[index].id == produitModifieId && produit[index].color == produitModifieCouleur){
           produit.splice(index, 1);
         }
       }
       // sauvegarde le changement dans le localstorage
       localStorage.setItem("produit", JSON.stringify(produit));
       parentArticle.remove();
-      // on recalcule à nouveau le prix et la quantite total
-      for (let index = 0; index < produit.length; index++) {
-        prixTotal += (produit[index].produitsClientsPrice * parseInt(produit[index].produitsClientsQuantite));
-        quantiteTotal += parseInt(produit[index].produitsClientsQuantite);
-      }
-      //on affiche le total quantite (article) et le total prix dans la partie correspondante dans le html 
-      let totalQuantiteHtml = document.getElementById("totalQuantity");
-      totalQuantiteHtml.textContent = quantiteTotal;
 
-      let totalPriceHtml = document.getElementById("totalPrice");
-      totalPriceHtml.textContent = prixTotal;
+      getTotal()
    });
   }
 };
-supprimerProduit();
 
 // changement de la quantite de produits
 function changerQuantite() {
@@ -111,30 +88,39 @@ function changerQuantite() {
       const parentArticle = event.target.closest(".cart__item");
       const produitModifieId = parentArticle.getAttribute("data-id");
       const produitModifieCouleur = parentArticle.getAttribute("data-color");
-      // on definit la quantite et le prix total
-      let quantiteTotal = 0;
-      let prixTotal = 0;
-      // on calcule le prix et quantite nouvelle (le produit id qui a recu un changement de quantite)
+      
       for (let index = 0; index < produit.length; index++) {
         // si dans produit, produit id selectionne correspond au produit id dont la quantite a ete changee
         // donc dans produit, donne la valeur de la quantite nouvelle a la quantite du produit quantite selectionne
-        if(produit[index].produitsClientsId == produitModifieId && produit[index].produitsClientsCouleur == produitModifieCouleur){
-          produit[index].produitsClientsQuantite = nouvelleQuantite;
+        if(produit[index].id == produitModifieId && produit[index].color == produitModifieCouleur){
+          produit[index].quantity = nouvelleQuantite;
         } 
-        prixTotal += (produit[index].produitsClientsPrice * parseInt(produit[index].produitsClientsQuantite));
-        quantiteTotal += parseInt(produit[index].produitsClientsQuantite);
       }
-      //on affiche le total quantite (article) et le total prix dans la partie correspondante dans le html 
-      let totalQuantiteHtml = document.getElementById("totalQuantity");
-      totalQuantiteHtml.textContent = quantiteTotal;
-      let totalPriceHtml = document.getElementById("totalPrice");
-      totalPriceHtml.textContent = prixTotal;
-      // on sauvergarde le changement dans le localstorage
       localStorage.setItem("produit", JSON.stringify(produit))
+
+      getTotal()
 		});
 	} 
+};
+
+
+function getTotal() {
+  const quantity = document.querySelector('#totalQuantity')
+  quantity.textContent = 0
+  const total = document.querySelector('#totalPrice')
+  total.textContent = 0
+
+  produit.forEach(item => {
+    fetch(`http://localhost:3000/api/products/${item.id}`)
+      .then(res => res.json())
+      .then(data => {
+        quantity.textContent = Number(quantity.textContent) + item.quantity
+        total.textContent = (Number(total.textContent) + (data.price * item.quantity))
+      })
+      .catch(err => console.log(err))
+  })
+
 }
-changerQuantite();
 
 
 // remplir les champs vides
@@ -256,7 +242,7 @@ function ajouterCommande (){
 
       const produitIDs = [];
       for (let index = 0; index < produit.length; index++) {
-       produitIDs.push(produit[index].produitsClientsId);
+       produitIDs.push(produit[index].id);
       }
       
       const objetCommande = {
